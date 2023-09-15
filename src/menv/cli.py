@@ -12,7 +12,7 @@ else:
 
 
 @click.command()
-@click.argument("dirs")
+@click.argument("dir")
 @click.option(
     "--system-site-packages",
     "system_site",
@@ -27,16 +27,13 @@ else:
     "when symlinks are not the default for "
     "the platform.",
 )
-# @click.option(
-#     "--copies",
-#     "symlinks",
-#     is_flag=True,
-#     default=not use_symlinks,
-#     flag_value=False,
-#     help="Try to use copies rather than symlinks, "
-#     "even when symlinks are the default for "
-#     "the platform.",
-# )
+@click.option(
+    "--copies",
+    is_flag=True,
+    help="Try to use copies rather than symlinks, "
+    "even when symlinks are the default for "
+    "the platform.",
+)
 @click.option(
     "--clear",
     is_flag=True,
@@ -72,10 +69,17 @@ else:
     help=f'Upgrade core dependencies ({", ".join(CORE_VENV_DEPS)}) '
     "to the latest version in PyPI",
 )
-def cli(dirs, system_site, symlinks, clear, upgrade, with_pip, prompt, upgrade_deps):
+def cli(
+    dir, system_site, symlinks, copies, clear, upgrade, with_pip, prompt, upgrade_deps
+):
     if upgrade and clear:
         raise ValueError("you cannot supply --upgrade and --clear together.")
 
+    if copies:
+        symlinks = False
+    # print(f"{dir = }, {system_site = }, {symlinks = }, {clear = }, {upgrade = }, {with_pip = }, {prompt = }, {upgrade_deps = }")
+    # defaults: dir = '.asdf', system_site = False, symlinks = False,
+    # clear = False, upgrade = False, with_pip = True, prompt = None, upgrade_deps = False
     builder = EnvBuilder(
         system_site_packages=system_site,
         clear=clear,
@@ -86,7 +90,4 @@ def cli(dirs, system_site, symlinks, clear, upgrade, with_pip, prompt, upgrade_d
         upgrade_deps=upgrade_deps,
     )
 
-    print(builder)
-
-    for d in dirs:
-        builder.create(d)
+    builder.create(dir)
