@@ -9,7 +9,7 @@ dependencies = [
     "click>=8.1.7",
     "tomlkit>=0.12.1",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 readme = "README.md"
 license = {text = "MIT"}
 

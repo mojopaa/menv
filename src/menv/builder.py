@@ -1,8 +1,14 @@
 import os
 import shutil
 import types
+from pathlib import Path
 
 import tomlkit
+from tomlkit.toml_file import TOMLFile
+
+MODULAR_DIR = Path.home() / ".modular"
+MOJO_PKG_DIR = MODULAR_DIR / "pkg/packages.modular.com_mojo"
+MOJO_BIN_DIR = MOJO_PKG_DIR / "bin"
 
 
 def create_if_needed(d):
@@ -64,35 +70,44 @@ class MojoEnvBuilder:
         context.prompt = "(%s) " % prompt
         create_if_needed(env_dir)
 
+        context.mojo_dir = str(MOJO_BIN_DIR)  # TODO: use findmojo
+        context.mojo_exe = "mojo"
+
         return context
-    
-def create_configuration(self, context):
-    """
-    Create a configuration file indicating where the environment's Python
-    was copied from, and whether the system site-packages should be made
-    available in the environment.
 
-    Args:
-        context: The context object containing information about the environment.
+    def create_configuration(self, context):
+        """
+        Create a configuration file indicating where the environment's Python
+        was copied from, and whether the system site-packages should be made
+        available in the environment.
 
-    Returns:
-        None
-    """
-    context.cfg_path = path = os.path.join(context.env_dir, 'mojovenv.toml')
+        Args:
+            context: The context object containing information about the environment.
 
-    cfg = tomlkit.document()
-    cfg.add("home", context.mojo_dir)  # TODO
+        Returns:
+            None
+        """
+        context.cfg_path = path = os.path.join(context.env_dir, "mojovenv.toml")
 
-    if self.system_site_packages:
-        incl = True
-    else:
-        incl = False
-    cfg.add("include-system-site-packages", incl)
+        cfg = tomlkit.document()
+        cfg.add("home", context.mojo_dir)  # TODO
 
-    # TODO: Read VERSION
-    with open("~/.modular/pkg/packages.modular.com_mojo/VERSION") as f:
-        version = f.read().strip()
+        if self.system_site_packages:
+            incl = True
+        else:
+            incl = False
+        cfg.add("include-system-site-packages", incl)
 
-    cfg.add("version", version)
-    
+        # TODO: Read VERSION
+        with open(MOJO_PKG_DIR / "VERSION") as f:
+            version = f.read().strip()
 
+        cfg.add("version", version)
+
+        TOMLFile(path).write(cfg)
+
+
+if __name__ == "__main__":
+    m = MojoEnvBuilder()
+    c = m.ensure_directories(".asdf")
+    m.create_configuration(c)
