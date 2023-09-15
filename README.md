@@ -1,0 +1,2 @@
+# menv
+Mojo venv
