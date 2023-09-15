@@ -27,4 +27,4 @@ dev = [
 ]
 
 [project.scripts]
-menv = "menv.cli:main"
+menv = "menv.cli:cli"
