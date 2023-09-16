@@ -3,7 +3,7 @@ from venv import EnvBuilder
 
 import click
 
-CORE_VENV_DEPS = ("pip",)  # TODO: assure
+from .utils import CORE_VENV_DEPS
 
 if os.name == "nt":
     use_symlinks = False

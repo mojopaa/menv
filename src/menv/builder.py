@@ -58,6 +58,37 @@ class MojoEnvBuilder:
         self.upgrade_deps = upgrade_deps
         # self.scm_ignore_files = frozenset(map(str.lower, scm_ignore_files))
 
+    def create(self, env_dir):
+        """
+        Create a virtual environment in a directory.
+
+        :param env_dir: The target directory to create an environment in.
+
+        """
+        env_dir = os.path.abspath(env_dir)
+        context = self.ensure_directories(env_dir)
+        # for scm in self.scm_ignore_files:
+        #     getattr(self, f"create_{scm}_ignore_file")(context)
+        # See issue 24875. We need system_site_packages to be False
+        # until after pip is installed.
+        true_system_site_packages = self.system_site_packages
+        self.system_site_packages = False
+        self.create_configuration(context)
+        self.setup_mojo(context)
+        # if self.with_pip:
+        #     self._setup_pip(context)
+        if not self.upgrade:
+            self.setup_scripts(context)
+            self.post_setup(context)
+        if true_system_site_packages:
+            # We had set it to False before, now
+            # restore it and rewrite the configuration
+            self.system_site_packages = True
+            self.create_configuration(context)
+        if self.upgrade_deps:
+            self.upgrade_dependencies(context)
+        self.create_git_ignore_file(context)
+
     def ensure_directories(self, env_dir):
         """
         Create the directories for the environment.
@@ -218,9 +249,11 @@ class MojoEnvBuilder:
             if os.path.isfile(src_item):
                 self.symlink_or_copy(src_item, dst_item, relative_symlinks_ok)
                 shutil.copymode(src_item, dst_item)
-            else:
+            elif os.path.isdir(src_item):
                 os.makedirs(dst_item, exist_ok=True)
                 self.recursive_symlink_or_copy(src_item, dst_item, relative_symlinks_ok)
+            else:
+                logger.warning(f"Skipping {src_item}")
 
     def create_git_ignore_file(self, context):
         """
@@ -270,12 +303,161 @@ class MojoEnvBuilder:
                         os.chmod(path, 0o755)
 
         else:
-            pass
+            pass  # TODO
+
+    def replace_variables(self, text, context):
+        """
+        Replace variable placeholders in the script text with context-specific
+        variables.
+
+        Args:
+            text (str): The text in which to replace placeholder variables.
+            context (Context): The information for the environment creation request
+                being processed.
+
+        Returns:
+            str: The text passed in, but with variables replaced.
+        """
+        # Replace '__VENV_DIR__' placeholder with context.env_dir
+        text = text.replace("__VENV_DIR__", context.env_dir)
+
+        # Replace '__VENV_NAME__' placeholder with context.env_name
+        text = text.replace("__VENV_NAME__", context.env_name)
+
+        # Replace '__VENV_PROMPT__' placeholder with context.prompt
+        text = text.replace("__VENV_PROMPT__", context.prompt)
+
+        # Replace '__VENV_BIN_NAME__' placeholder with context.bin_name
+        text = text.replace("__VENV_BIN_NAME__", context.bin_name)
+
+        # Replace '__VENV_MOJO__' placeholder with context.env_exe
+        text = text.replace("__VENV_MOJO__", context.env_exe)
+
+        return text
+
+    def setup_scripts(self, context):
+        """
+        Set up scripts into the created environment from a directory.
+
+        This method installs the default scripts into the environment
+        being created. You can prevent the default installation by overriding
+        this method if you really need to, or if you need to specify
+        a different location for the scripts to install. By default, the
+        'scripts' directory in the venv package is used as the source of
+        scripts to install.
+        """
+        path = str(Path(__file__).with_name("scripts").absolute())
+        self.install_scripts(context, path)
+
+    def install_scripts(self, context, path):
+        """
+        Install scripts into the created environment from a directory.
+
+        Args:
+            context: The information for the environment creation request
+                being processed.
+            path: Absolute pathname of a directory containing script.
+                Scripts in the 'common' subdirectory of this directory,
+                and those in the directory named for the platform
+                being run on, are installed in the created environment.
+                Placeholder variables are replaced with environment-
+                specific values.
+        """
+        binpath = context.bin_path  # Get the bin path from the context
+        plen = len(path)  # Get the length of the path
+        for root, dirs, files in os.walk(path):
+            if root == path:  # At top-level, remove irrelevant dirs
+                for d in dirs[:]:
+                    if d not in ("common", os.name):
+                        dirs.remove(d)
+                continue  # Ignore files in top level
+            for f in files:
+                if (
+                    os.name == "nt"
+                    and f.startswith("mojo")
+                    and f.endswith((".exe", ".pdb"))
+                ):
+                    continue  # Skip files that start with 'python' and end with '.exe' or '.pdb' on Windows
+                srcfile = os.path.join(root, f)  # Get the source file path
+                suffix = root[plen:].split(os.sep)[
+                    2:
+                ]  # Get the relative path of the file
+                if not suffix:
+                    dstdir = binpath  # If there is no suffix, set the destination directory as binpath
+                else:
+                    dstdir = os.path.join(
+                        binpath, *suffix
+                    )  # Set the destination directory as binpath + suffix
+                if not os.path.exists(dstdir):
+                    os.makedirs(
+                        dstdir
+                    )  # Create the destination directory if it does not exist
+                dstfile = os.path.join(dstdir, f)  # Get the destination file path
+                with open(srcfile, "rb") as f:
+                    data = f.read()  # Read the source file data
+                if not srcfile.endswith((".exe", ".pdb")):
+                    try:
+                        data = data.decode("utf-8")  # Decode the data as utf-8
+                        data = self.replace_variables(
+                            data, context
+                        )  # Replace the placeholder variables with environment-specific values
+                        data = data.encode("utf-8")  # Encode the data as utf-8
+                    except UnicodeError as e:
+                        data = None
+                        logger.error(f"UnicodeError: {e}")
+                        logger.warning(
+                            "unable to copy script %r, " "may be binary: %s", srcfile, e
+                        )  # Log a warning if unable to copy script due to UnicodeError
+                if data is not None:
+                    with open(dstfile, "wb") as f:
+                        f.write(data)  # Write the data to the destination file
+                    shutil.copymode(
+                        srcfile, dstfile
+                    )  # Copy the permissions from the source file to the destination file
+
+    def upgrade_dependencies(self, context):
+        logger.warning("TODO: upgrade CORE_VENV_DEPS")
+        logger.warning("NOP right now.")
+
+    def post_setup(self, context):
+        """
+        Hook for post-setup modification of the venv.
+        Subclasses may install additional packages or scripts here,
+        add activation shell scripts, etc.
+
+        Parameters:
+          - context: The information for the environment creation request
+                     being processed.
+
+        No changes are made in the function body.
+        """
+
+        pass
+
+
+def create(
+    env_dir,
+    system_site_packages=False,
+    clear=False,
+    symlinks=False,
+    prompt=None,
+    upgrade_deps=False,
+):
+    """Create a virtual environment in a directory."""
+    builder = MojoEnvBuilder(
+        system_site_packages=system_site_packages,
+        clear=clear,
+        symlinks=symlinks,
+        prompt=prompt,
+        upgrade_deps=upgrade_deps,
+    )
+    builder.create(env_dir)
 
 
 if __name__ == "__main__":
-    m = MojoEnvBuilder()
-    c = m.ensure_directories(".asdf")
-    m.create_configuration(c)
-    m.setup_mojo(c)
-    m.create_git_ignore_file(c)
+    # m = MojoEnvBuilder()
+    # c = m.ensure_directories(".asdf")
+    # m.create_configuration(c)
+    # m.setup_mojo(c)
+    # m.create_git_ignore_file(c)
+    create(".asdf")
