@@ -114,8 +114,8 @@ def cli(
         py_venv_builder.create(d)
 
         # print(f"{scm_ignore_files = }")
-        if isinstance(scm_ignore_files, str):
-            scm_ignore_files = eval(scm_ignore_files)
+        # if isinstance(scm_ignore_files, str):
+        #     scm_ignore_files = eval(scm_ignore_files)
         mojo_venv_builder = MojoEnvBuilder(
             system_site_packages=system_site,
             clear=clear,

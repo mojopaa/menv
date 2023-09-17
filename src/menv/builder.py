@@ -42,7 +42,7 @@ def clear_directory(path):
             shutil.rmtree(fn)
 
 
-def change_config(path, section: str, key: str, value: str):
+def change_config(path: str, section: str, key: str, value: str):
     config = configparser.ConfigParser()
     config.read(path)
 
@@ -106,7 +106,7 @@ class MojoEnvBuilder:
         if self.scm_ignore_files:
             self.create_git_ignore_file(context)
 
-    def ensure_directories(self, env_dir):
+    def ensure_directories(self, env_dir: str | Path):
         """
         Create the directories for the environment.
 
