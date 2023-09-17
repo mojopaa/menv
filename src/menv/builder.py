@@ -169,24 +169,25 @@ class MojoEnvBuilder:
         context.cfg_path = path = os.path.join(context.env_dir, "mojovenv.toml")
 
         cfg = tomlkit.document()
-        cfg.add("home", context.mojo_dir)
+        mojo_tab = tomlkit.table()
+        mojo_tab.add("home", context.mojo_dir)
 
         if self.system_site_packages:
             incl = True
         else:
             incl = False
-        cfg.add("include-system-site-packages", incl)
+        mojo_tab.add("include-system-site-packages", incl)
 
         # Read VERSION
         with open(MOJO_PKG_DIR / "VERSION") as f:
             version = f.read().strip()
 
-        cfg.add("version", version)
+        mojo_tab.add("version", version)
 
         if self.prompt is not None:
-            cfg.add("prompt", f"{self.prompt!r}")
+            mojo_tab.add("prompt", f"{self.prompt!r}")
 
-        cfg.add("mojo-executable", str(MOJO_EXECUTABLE))
+        mojo_tab.add("mojo-executable", str(MOJO_EXECUTABLE))
 
         # build command
         args = []
@@ -211,8 +212,8 @@ class MojoEnvBuilder:
         args.append(context.env_dir)
         args = " ".join(args)
 
-        cfg.add("command", f"menv {args}")
-
+        mojo_tab.add("command", f"menv {args}")
+        cfg["mojo"] = mojo_tab
         TOMLFile(path).write(cfg)
 
     if os.name != "nt":

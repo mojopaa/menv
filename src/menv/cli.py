@@ -95,6 +95,7 @@ def cli(
         raise ValueError("you cannot supply --upgrade and --clear together.")
 
     if copies:
+        # print(f"{copies = }")
         symlinks = False
     # print(f"{dir = }, {system_site = }, {symlinks = }, {clear = }, {upgrade = }, {with_pip = }, {prompt = }, {upgrade_deps = }")
     # defaults: dir = '.asdf', system_site = False, symlinks = False,
