@@ -3,6 +3,7 @@ from venv import EnvBuilder
 
 import click
 
+from .builder import MojoEnvBuilder
 from .utils import CORE_VENV_DEPS
 
 if os.name == "nt":
@@ -12,7 +13,7 @@ else:
 
 
 @click.command()
-@click.argument("dir")
+@click.argument("dirs", nargs=-1)
 @click.option(
     "--system-site-packages",
     "system_site",
@@ -69,8 +70,26 @@ else:
     help=f'Upgrade core dependencies ({", ".join(CORE_VENV_DEPS)}) '
     "to the latest version in PyPI",
 )
+@click.option(
+    "--without-scm-ignore-files",
+    "scm_ignore_files",
+    is_flag=True,
+    flag_value=frozenset(),
+    default=frozenset(["git"]),
+    help="Skips adding SCM ignore files to the environment "
+    "directory (Git is supported by default).",
+)
 def cli(
-    dir, system_site, symlinks, copies, clear, upgrade, with_pip, prompt, upgrade_deps
+    dirs,
+    system_site,
+    symlinks,
+    copies,
+    clear,
+    upgrade,
+    with_pip,
+    prompt,
+    upgrade_deps,
+    scm_ignore_files=frozenset(["git"]),
 ):
     if upgrade and clear:
         raise ValueError("you cannot supply --upgrade and --clear together.")
@@ -80,14 +99,29 @@ def cli(
     # print(f"{dir = }, {system_site = }, {symlinks = }, {clear = }, {upgrade = }, {with_pip = }, {prompt = }, {upgrade_deps = }")
     # defaults: dir = '.asdf', system_site = False, symlinks = False,
     # clear = False, upgrade = False, with_pip = True, prompt = None, upgrade_deps = False
-    builder = EnvBuilder(
-        system_site_packages=system_site,
-        clear=clear,
-        symlinks=symlinks,
-        upgrade=upgrade,
-        with_pip=with_pip,
-        prompt=prompt,
-        upgrade_deps=upgrade_deps,
-    )
+    for d in dirs:
+        py_venv_builder = EnvBuilder(
+            system_site_packages=system_site,
+            clear=clear,
+            symlinks=symlinks,
+            upgrade=upgrade,
+            with_pip=with_pip,
+            prompt=prompt,
+            upgrade_deps=upgrade_deps,
+        )
 
-    builder.create(dir)
+        py_venv_builder.create(d)
+
+        # print(f"{scm_ignore_files = }")
+        if isinstance(scm_ignore_files, str):
+            scm_ignore_files = eval(scm_ignore_files)
+        mojo_venv_builder = MojoEnvBuilder(
+            system_site_packages=system_site,
+            clear=clear,
+            symlinks=symlinks,
+            upgrade=upgrade,
+            prompt=prompt,
+            upgrade_deps=upgrade_deps,
+            scm_ignore_files=scm_ignore_files,
+        )
+        mojo_venv_builder.create(d)

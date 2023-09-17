@@ -1,6 +1,8 @@
+import configparser
 import logging
 import os
 import shutil
+import subprocess
 import types
 from pathlib import Path
 
@@ -10,8 +12,11 @@ from tomlkit.toml_file import TOMLFile
 MODULAR_NAME = ".modular"
 MODULAR_PKG_FOLDER = "pkg"
 MODULAR_PKG_NAME = "packages.modular.com_mojo"
+MODULAR_CONFIG_NAME = "modular.cfg"
+
 
 MODULAR_DIR = Path.home() / MODULAR_NAME
+MODULAR_CONFIG = MODULAR_DIR / MODULAR_CONFIG_NAME
 MOJO_PKG_DIR = MODULAR_DIR / MODULAR_PKG_FOLDER / MODULAR_PKG_NAME
 MOJO_BIN_DIR = MOJO_PKG_DIR / "bin"
 MOJO_LIB_DIR = MOJO_PKG_DIR / "lib"
@@ -36,6 +41,16 @@ def clear_directory(path):
             shutil.rmtree(fn)
 
 
+def change_config(path, section: str, key: str, value: str):
+    config = configparser.ConfigParser()
+    config.read(path)
+
+    config[section][key] = value
+
+    with open(path, "w", encoding="utf-8") as f:
+        config.write(f)
+
+
 class MojoEnvBuilder:
     def __init__(
         self,
@@ -45,7 +60,7 @@ class MojoEnvBuilder:
         upgrade=False,
         prompt=None,
         upgrade_deps=False,
-        # scm_ignore_files=frozenset(),
+        scm_ignore_files=frozenset(),
     ):
         self.system_site_packages = system_site_packages
         self.clear = clear
@@ -56,7 +71,7 @@ class MojoEnvBuilder:
             prompt = os.path.basename(os.getcwd())
         self.prompt = prompt
         self.upgrade_deps = upgrade_deps
-        # self.scm_ignore_files = frozenset(map(str.lower, scm_ignore_files))
+        self.scm_ignore_files = frozenset(map(str.lower, scm_ignore_files))
 
     def create(self, env_dir):
         """
@@ -87,7 +102,9 @@ class MojoEnvBuilder:
             self.create_configuration(context)
         if self.upgrade_deps:
             self.upgrade_dependencies(context)
-        self.create_git_ignore_file(context)
+        print(f"{self.scm_ignore_files = }")
+        for scm in self.scm_ignore_files:
+            getattr(self, f"create_{scm}_ignore_file")(context)
 
     def ensure_directories(self, env_dir):
         """
@@ -117,6 +134,7 @@ class MojoEnvBuilder:
 
         # venv paths
         venv_modular_dir = Path(env_dir) / MODULAR_NAME
+        venv_modular_cfg = venv_modular_dir / MODULAR_CONFIG_NAME
         venv_pkg_dir = venv_modular_dir / MODULAR_PKG_FOLDER / MODULAR_PKG_NAME
 
         bin_name = "bin"
@@ -126,9 +144,11 @@ class MojoEnvBuilder:
 
         context.executable = MOJO_EXECUTABLE
         context.bin_name = bin_name
+        context.pkg_dir = str(venv_pkg_dir)
         context.bin_path = str(venv_bin_dir)
         context.lib_path = str(venv_lib_dir)
         context.env_exe = str(venv_mojo_excutable)
+        context.env_cfg = str(venv_modular_cfg)
 
         create_if_needed(venv_bin_dir)
         create_if_needed(venv_lib_dir)
@@ -186,8 +206,8 @@ class MojoEnvBuilder:
             args.append("--upgrade-deps")
         if self.orig_prompt is not None:
             args.append(f'--prompt="{self.orig_prompt}"')
-        # if not self.scm_ignore_files:
-        #     args.append("--without-scm-ignore-files")
+        if not self.scm_ignore_files:
+            args.append("--without-scm-ignore-files")
 
         args.append(context.env_dir)
         args = " ".join(args)
@@ -302,8 +322,32 @@ class MojoEnvBuilder:
                     if not os.path.islink(path):
                         os.chmod(path, 0o755)
 
+            # Copy config and change import_path settings etc.
+            copier(MODULAR_CONFIG, context.env_cfg)
+            self.write_modular_cfg(context)
+
         else:
             pass  # TODO
+
+    def write_modular_cfg(self, context):
+        cfg_path = context.env_cfg  # context.env_cfg = str(venv_modular_cfg)
+        libpath = context.lib_path  # str(venv_pkg_dir / "lib")
+
+        change_config(
+            cfg_path,
+            section="mojo",
+            key="import_path",
+            value=os.path.join(libpath, "mojo"),
+        )  # not working
+        change_config(
+            cfg_path,
+            section="installed",
+            key="packages_modular_com_mojo",
+            value=context.pkg_dir,
+        )
+        # venv_pkg_config = os.path.join(context.pkg_dir, MODULAR_CONFIG_NAME)
+        # print(venv_pkg_config)
+        # change_config(venv_pkg_config, section="mojo", key="import_path", value=os.path.join(libpath, "mojo"))
 
     def replace_variables(self, text, context):
         """
@@ -442,6 +486,8 @@ def create(
     symlinks=False,
     prompt=None,
     upgrade_deps=False,
+    *,
+    scm_ignore_files=frozenset(),
 ):
     """Create a virtual environment in a directory."""
     builder = MojoEnvBuilder(
@@ -450,6 +496,7 @@ def create(
         symlinks=symlinks,
         prompt=prompt,
         upgrade_deps=upgrade_deps,
+        scm_ignore_files=scm_ignore_files,
     )
     builder.create(env_dir)
 
