@@ -74,8 +74,8 @@ else:
     "--without-scm-ignore-files",
     "scm_ignore_files",
     is_flag=True,
-    flag_value=frozenset(),
-    default=frozenset(["git"]),
+    flag_value=False,
+    default=True,
     help="Skips adding SCM ignore files to the environment "
     "directory (Git is supported by default).",
 )
@@ -89,7 +89,7 @@ def cli(
     with_pip,
     prompt,
     upgrade_deps,
-    scm_ignore_files=frozenset(["git"]),
+    scm_ignore_files,
 ):
     if upgrade and clear:
         raise ValueError("you cannot supply --upgrade and --clear together.")

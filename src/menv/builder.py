@@ -60,7 +60,7 @@ class MojoEnvBuilder:
         upgrade=False,
         prompt=None,
         upgrade_deps=False,
-        scm_ignore_files=frozenset(),
+        scm_ignore_files=True,
     ):
         self.system_site_packages = system_site_packages
         self.clear = clear
@@ -71,7 +71,7 @@ class MojoEnvBuilder:
             prompt = os.path.basename(os.getcwd())
         self.prompt = prompt
         self.upgrade_deps = upgrade_deps
-        self.scm_ignore_files = frozenset(map(str.lower, scm_ignore_files))
+        self.scm_ignore_files = scm_ignore_files
 
     def create(self, env_dir):
         """
@@ -102,9 +102,8 @@ class MojoEnvBuilder:
             self.create_configuration(context)
         if self.upgrade_deps:
             self.upgrade_dependencies(context)
-        print(f"{self.scm_ignore_files = }")
-        for scm in self.scm_ignore_files:
-            getattr(self, f"create_{scm}_ignore_file")(context)
+        if self.scm_ignore_files:
+            self.create_git_ignore_file(context)
 
     def ensure_directories(self, env_dir):
         """
