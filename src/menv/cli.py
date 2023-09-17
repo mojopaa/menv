@@ -12,7 +12,7 @@ else:
     use_symlinks = True
 
 
-@click.command()
+@click.command(context_settings=dict(help_option_names=["-h", "--help"]))
 @click.argument("dirs", nargs=-1)
 @click.option(
     "--system-site-packages",
