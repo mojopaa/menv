@@ -13,9 +13,13 @@ from menv.builder import (
 
 
 class TestMojoEnvBuilder:
-    builder = MojoEnvBuilder()
-    venv_path = Path(__file__).parent / "venv"
-    context = builder.ensure_directories(venv_path)
+
+    @classmethod
+    def setup_class(cls):
+        cls.builder = MojoEnvBuilder()
+        cls.venv_path = Path(__file__).parent / "venv"
+        cls.context = cls.builder.ensure_directories(cls.venv_path)
+
 
     def test_init(self) -> None:
         pprint(f"{self.context = }")  # use pytest -s to show this print
