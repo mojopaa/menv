@@ -488,7 +488,7 @@ def create(
     prompt=None,
     upgrade_deps=False,
     *,
-    scm_ignore_files=frozenset(),
+    scm_ignore_files=True,
 ):
     """Create a virtual environment in a directory."""
     builder = MojoEnvBuilder(
