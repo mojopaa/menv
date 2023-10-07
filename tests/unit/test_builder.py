@@ -13,13 +13,11 @@ from menv.builder import (
 
 
 class TestMojoEnvBuilder:
-
     @classmethod
     def setup_class(cls):
         cls.builder = MojoEnvBuilder()
         cls.venv_path = Path(__file__).parent / "venv"
         cls.context = cls.builder.ensure_directories(cls.venv_path)
-
 
     def test_init(self) -> None:
         pprint(f"{self.context = }")  # use pytest -s to show this print
@@ -38,6 +36,11 @@ class TestMojoEnvBuilder:
         assert hasattr(self.context, "lib_path")
         assert hasattr(self.context, "env_exe")
         assert hasattr(self.context, "env_cfg")
+
+    def test_install_scripts(self):
+        self.builder.setup_scripts(self.context)
+
+        assert Path(self.context.bin_path).joinpath("mactivate").exists()
 
     # comment to debug venv
     @classmethod

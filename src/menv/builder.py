@@ -123,7 +123,7 @@ class MojoEnvBuilder:
             clear_directory(env_dir)
 
         context = types.SimpleNamespace()
-        context.env_dir = env_dir
+        context.env_dir = str(env_dir)
         context.env_name = os.path.split(env_dir)[1]
         prompt = self.prompt if self.prompt is not None else context.env_name
         context.prompt = "(%s) " % prompt
@@ -364,16 +364,16 @@ class MojoEnvBuilder:
             str: The text passed in, but with variables replaced.
         """
         # Replace '__VENV_DIR__' placeholder with context.env_dir
-        text = text.replace("__VENV_DIR__", context.env_dir)
+        text = text.replace("__VENV_DIR__", context.env_dir)  # abspath of venv
 
         # Replace '__VENV_NAME__' placeholder with context.env_name
-        text = text.replace("__VENV_NAME__", context.env_name)
+        text = text.replace("__VENV_NAME__", context.env_name)  # stem of venv
 
         # Replace '__VENV_PROMPT__' placeholder with context.prompt
         text = text.replace("__VENV_PROMPT__", context.prompt)
 
         # Replace '__VENV_BIN_NAME__' placeholder with context.bin_name
-        text = text.replace("__VENV_BIN_NAME__", context.bin_name)
+        text = text.replace("__VENV_BIN_NAME__", context.bin_name)  # bin
 
         # Replace '__VENV_MOJO__' placeholder with context.env_exe
         text = text.replace("__VENV_MOJO__", context.env_exe)
@@ -419,7 +419,7 @@ class MojoEnvBuilder:
             for f in files:
                 if (
                     os.name == "nt"
-                    and f.startswith("mojo")
+                    and f.startswith("python")
                     and f.endswith((".exe", ".pdb"))
                 ):
                     continue  # Skip files that start with 'python' and end with '.exe' or '.pdb' on Windows
