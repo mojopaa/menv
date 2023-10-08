@@ -76,4 +76,6 @@ else
     fi
 fi
 
+PATH="__VENV_BIN_PATH__:$PATH"
+export PATH
 cd "$ORIGINAL_DIR"

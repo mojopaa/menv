@@ -384,6 +384,9 @@ class MojoEnvBuilder:
         # Replace '__VENV_BIN_NAME__' placeholder with context.bin_name
         text = text.replace("__VENV_BIN_NAME__", context.bin_name)  # bin
 
+        # Replace '__VENV_BIN_PATH__' placeholder with context.bin_path
+        text = text.replace("__VENV_BIN_PATH__", context.bin_path)
+
         # Replace '__VENV_MOJO__' placeholder with context.env_exe
         text = text.replace("__VENV_MOJO__", context.env_exe)
 
