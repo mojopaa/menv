@@ -3,6 +3,7 @@ import logging
 import os
 import shutil
 import subprocess
+import sys
 import types
 from pathlib import Path
 
@@ -137,7 +138,7 @@ class MojoEnvBuilder:
         venv_modular_cfg = venv_modular_dir / MODULAR_CONFIG_NAME
         venv_pkg_dir = venv_modular_dir / MODULAR_PKG_FOLDER / MODULAR_PKG_NAME
 
-        bin_name = "bin"
+        bin_name = "bin"  # Mojo bin name
         venv_bin_dir = venv_pkg_dir / bin_name
         venv_lib_dir = venv_pkg_dir / "lib"
         venv_mojo_excutable = venv_bin_dir / "mojo"
@@ -149,6 +150,14 @@ class MojoEnvBuilder:
         context.lib_path = str(venv_lib_dir)
         context.env_exe = str(venv_mojo_excutable)
         context.env_cfg = str(venv_modular_cfg)
+
+        # venv bin path, reference: /usr/lib/python3.10/venv/__init__.py
+        if sys.platform == "win32":
+            py_venv_biname = "Scripts"
+        else:
+            py_venv_biname = "bin"
+
+        context.py_venv_binpath = str(Path(env_dir) / py_venv_biname)
 
         create_if_needed(venv_bin_dir)
         create_if_needed(venv_lib_dir)
@@ -408,7 +417,8 @@ class MojoEnvBuilder:
                 Placeholder variables are replaced with environment-
                 specific values.
         """
-        binpath = context.bin_path  # Get the bin path from the context
+        # binpath = context.bin_path  # Get the bin path from the context
+        binpath = context.py_venv_binpath  # Get the bin path from the context
         plen = len(path)  # Get the length of the path
         for root, dirs, files in os.walk(path):
             if root == path:  # At top-level, remove irrelevant dirs

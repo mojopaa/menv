@@ -1,6 +1,8 @@
 # This file must be used with "source bin/activate" *from bash*
 # you cannot run it directly
-source acitivate
+ORIGINAL_DIR="$(pwd)"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"  # get the directory of this script
+source "${SCRIPT_DIR}/activate"
 
 if [ $? -eq 0 ]; then
     true  # echo "Activate successfully"
@@ -73,3 +75,5 @@ else
         hash -r 2> /dev/null
     fi
 fi
+
+cd "$ORIGINAL_DIR"
