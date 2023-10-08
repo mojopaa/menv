@@ -12,6 +12,8 @@ Mojo venv
     - Linux: `. .venv/bin/activate`
 - Run `menv -h`
 - Run `menv .test`
+- Run `source .test/bin/mactivate`
+- Test with `which mojo`
 
 
 ### References
